@@ -897,6 +897,7 @@
         // 优先级顺序（用于排序）
         const priorityOrder = { '高': 1, '中': 2, '低': 3 };
         
+        // ==================== 深色模式功能 ====================
         // 深色模式设置
         const THEME_KEY = 'theme';
         let isDarkMode = localStorage.getItem(THEME_KEY) === 'dark';
@@ -927,6 +928,7 @@
         // 为切换按钮绑定点击事件
         themeToggle.addEventListener('click', toggleTheme);
         
+        // ==================== 任务数据存储功能 ====================
         // 从 localStorage 读取任务数据
         function loadTasks() {
             // 从 localStorage 获取保存的任务数据
@@ -946,28 +948,36 @@
             localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
         }
         
-        // 检查截止日期状态
+        // ==================== 截止日期检查功能 ====================
+        // 检查截止日期状态（已过期/今天到期）
         function checkDeadlineStatus(taskItem, deadline) {
+            // 获取今天的日期，并将时间设置为00:00:00
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
+            // 获取任务的截止日期，并将时间设置为00:00:00
             const taskDeadline = new Date(deadline);
             taskDeadline.setHours(0, 0, 0, 0);
             
+            // 计算截止日期和今天的毫秒差值
             const diffTime = taskDeadline - today;
+            // 将毫秒差值转换为天数（向上取整）
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
+            // 获取任务项中的截止日期元素
             const deadlineElement = taskItem.querySelector('.task-deadline');
             
+            // 如果截止日期小于今天（diffDays < 0），标记为已过期
             if (diffDays < 0) {
-                // 已过期
                 deadlineElement.classList.add('overdue');
-            } else if (diffDays === 0) {
-                // 今天到期
+            } 
+            // 如果截止日期等于今天（diffDays === 0），标记为今天到期
+            else if (diffDays === 0) {
                 deadlineElement.classList.add('today');
             }
         }
         
+        // ==================== 任务渲染功能 ====================
         // 根据任务数据渲染任务列表
         function renderTasks(tasks) {
             console.log('渲染任务列表，任务数量:', tasks.length);
@@ -976,10 +986,13 @@
             // 清空当前任务列表
             tasksContainer.innerHTML = '';
             
-            // 如果有筛选条件，先筛选任务
+            // ==================== 筛选逻辑 ====================
+            // 初始筛选列表为全部任务
             let filteredTasks = tasks;
+            
+            // 如果有分类筛选条件，过滤任务
             if (currentFilter !== 'all') {
-                filteredTasks = tasks.filter(function(task) {
+                filteredTasks = filteredTasks.filter(function(task) {
                     return task.category === currentFilter;
                 });
             }
@@ -993,32 +1006,43 @@
             
             // 如果有截止日期筛选条件，过滤任务
             if (currentDeadlineFilter !== 'all' || customDeadlineDate) {
+                // 获取今天的日期
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 
                 filteredTasks = filteredTasks.filter(function(task) {
+                    // 如果任务没有截止日期，直接返回false（不显示）
                     if (!task.deadline) {
                         return false;
                     }
                     
+                    // 获取任务的截止日期，并将时间设置为00:00:00
                     const taskDeadline = new Date(task.deadline);
                     taskDeadline.setHours(0, 0, 0, 0);
                     
+                    // 计算截止日期和今天的毫秒差值
                     const diffTime = taskDeadline - today;
+                    // 将毫秒差值转换为天数（向上取整）
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     
+                    // 如果筛选类型是"今天到期"
                     if (currentDeadlineFilter === 'today') {
-                        return diffDays === 0;
-                    } else if (currentDeadlineFilter === 'overdue') {
-                        return diffDays < 0;
-                    } else if (customDeadlineDate) {
-                        const taskDeadline = new Date(task.deadline);
-                        taskDeadline.setHours(0, 0, 0, 0);
+                        return diffDays === 0;  // 只显示今天到期的任务
+                    } 
+                    // 如果筛选类型是"已过期"
+                    else if (currentDeadlineFilter === 'overdue') {
+                        return diffDays < 0;  // 只显示已过期的任务
+                    } 
+                    // 如果选择了自定义日期
+                    else if (customDeadlineDate) {
+                        // 获取用户选择的日期
                         const selectedDate = new Date(customDeadlineDate);
                         selectedDate.setHours(0, 0, 0, 0);
+                        // 比较任务截止日期和选择日期是否相同
                         return taskDeadline.getTime() === selectedDate.getTime();
                     }
                     
+                    // 默认返回true（显示所有有截止日期的任务）
                     return true;
                 });
             }
@@ -1030,35 +1054,42 @@
                 });
             }
             
-            // 按优先级排序（高优先级在前）
+            // ==================== 排序逻辑 ====================
+            // 第一次排序：按优先级排序（高优先级在前）
             filteredTasks.sort(function(a, b) {
-                const priorityA = priorityOrder[a.priority] || 2;  // 默认为中
-                const priorityB = priorityOrder[b.priority] || 2;  // 默认为中
-                return priorityA - priorityB;  // 升序排列，高优先级在前
+                // 从优先级映射中获取优先级值，默认为2（中）
+                const priorityA = priorityOrder[a.priority] || 2;
+                const priorityB = priorityOrder[b.priority] || 2;
+                // 升序排列，数值小的在前（高优先级在前）
+                return priorityA - priorityB;
             });
             
-            // 按截止日期排序（最近的日期在前）
+            // 第二次排序：按截止日期排序（最近的日期在前）
             // 同一天按优先级排序（高优先级在前）
             filteredTasks.sort(function(a, b) {
+                // 都没有截止日期，按优先级排序
                 if (!a.deadline && !b.deadline) {
-                    // 都没有截止日期，按优先级排序
                     const priorityA = priorityOrder[a.priority] || 2;
                     const priorityB = priorityOrder[b.priority] || 2;
                     return priorityA - priorityB;
                 }
+                // a没有截止日期，排在后面
                 if (!a.deadline) {
-                    return 1;  // 没有截止日期的排在后面
+                    return 1;
                 }
+                // b没有截止日期，排在后面
                 if (!b.deadline) {
-                    return -1;  // 没有截止日期的排在后面
+                    return -1;
                 }
                 
+                // 获取两个任务的截止日期
                 const dateA = new Date(a.deadline);
                 const dateB = new Date(b.deadline);
+                // 计算日期差值
                 const diff = dateA - dateB;
                 
                 if (diff !== 0) {
-                    return diff;  // 日期不同，按日期排序
+                    return diff;  // 日期不同，按日期排序（升序，最近的在前）
                 }
                 
                 // 日期相同，按优先级排序（高优先级在前）
@@ -1069,10 +1100,12 @@
             
             console.log('筛选和排序后的任务:', filteredTasks);
             
-            // 遍历任务数据，创建对应的DOM元素
+            // ==================== 渲染任务项 ====================
+            // 遍历筛选和排序后的任务数据，创建对应的DOM元素
             filteredTasks.forEach(function(task) {
                 console.log('渲染任务:', task.text, '优先级:', task.priority);
                 
+                // 创建任务项DOM元素
                 const taskItem = document.createElement('div');
                 taskItem.className = 'task-item';
                 
@@ -1151,6 +1184,7 @@
                     taskItem.classList.add('has-deadline');
                 }
                 
+                // ==================== 任务项插入逻辑 ====================
                 // 查找第一个已完成的任务
                 const firstCompletedTask = tasksContainer.querySelector('.task-item.completed');
                 
@@ -1186,13 +1220,16 @@
             updateClearCompletedButton();
         }
         
+        // ==================== 数据持久化功能 ====================
         // 将当前任务列表保存到 localStorage
         function saveTasksToLocalStorage() {
             saveTasks(allTasks);
         }
         
+        // ==================== DOM数据提取功能 ====================
         // 根据 taskItem DOM 元素构建 task 数据对象
         function buildTaskFromDOM(taskItem) {
+            // 获取任务文本元素
             const taskTextElement = taskItem.querySelector('.task-text');
             const taskContent = taskItem.querySelector('.task-content');
             
@@ -1205,6 +1242,7 @@
                 else if (tagText.includes('生活')) category = '生活';
                 else if (tagText.includes('学习')) category = '学习';
             }
+            // 如果从标签没获取到，从class中获取
             if (!category) {
                 if (taskItem.classList.contains('category-work')) category = '工作';
                 else if (taskItem.classList.contains('category-life')) category = '生活';
@@ -1222,6 +1260,7 @@
             // 获取任务文本
             const text = taskTextElement ? taskTextElement.textContent.trim() : '';
             
+            // 返回任务数据对象
             return {
                 text,
                 category,
@@ -1231,6 +1270,7 @@
             };
         }
 
+        // ==================== 添加任务功能 ====================
         // 为添加按钮绑定点击事件
         addBtn.addEventListener('click', function() {
             // 获取输入框的值并去除首尾空格
@@ -1355,6 +1395,7 @@
             saveTasksToLocalStorage();
         });
 
+        // ==================== 键盘快捷键功能 ====================
         // 为了更好的用户体验，也可以支持按回车键添加任务
         taskInput.addEventListener('keypress', function(event) {
             // 检查按下的是否是回车键（键码为13）
@@ -1364,6 +1405,7 @@
             }
         });
         
+        // ==================== 任务操作功能 ====================
         // 为任务容器添加事件委托，处理完成和删除按钮的点击事件
         tasksContainer.addEventListener('click', function(event) {
             // 检查被点击的元素是否是完成按钮
@@ -1390,18 +1432,21 @@
                     if (isCompleted) {
                         completeBtn.textContent = '取消';
                         setTimeout(() => {
+                            // 将已完成任务移到列表底部
                             tasksContainer.appendChild(taskItem);
                             updateClearCompletedButton();
                             saveTasksToLocalStorage();
                         }, 0);
                     } else {
                         completeBtn.textContent = '完成';
+                        // 将取消完成的任务移到未完成任务组的顶部
                         moveUncompletedTaskToTop(taskItem);
                         updateClearCompletedButton();
                         saveTasksToLocalStorage();
                     }
                 }
             }
+            // 检查被点击的元素是否是删除按钮
             else if (event.target.classList.contains('delete-btn')) {
                 const taskItem = event.target.closest('.task-item');
                 const taskTextEl = taskItem.querySelector('.task-text');
@@ -1417,6 +1462,7 @@
             }
         });
         
+        // ==================== 任务位置调整功能 ====================
         // 辅助函数：将未完成的任务移到未完成任务组的顶部
         function moveUncompletedTaskToTop(taskItem) {
             // 获取所有任务项
@@ -1434,6 +1480,7 @@
             }
         }
         
+        // ==================== 清空已完成任务功能 ====================
         // 获取清空已完成按钮元素
         const clearCompletedContainer = document.getElementById('clearCompletedContainer');
         const clearCompletedBtn = document.getElementById('clearCompletedBtn');
@@ -1466,6 +1513,7 @@
             saveTasksToLocalStorage();
         });
         
+        // ==================== 筛选功能 ====================
         // 为分类筛选按钮绑定点击事件
         categoryFilterBtns.forEach(function(filterBtn) {
             filterBtn.addEventListener('click', function() {
